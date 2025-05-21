@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pill Dispenser Setup</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+
+    <!-- Dispense Time Panel -->
+    <div class="dispense-panel">
+      <h2>Dispensing Time</h2>
+      <div class="time-select-group large">
+        <select id="dispense-hour-select"></select>
+        <select id="dispense-minute-select"></select>
+      </div>
+    </div>
+
+    <!-- Alarm List Panel -->
+    <div class="alarms-panel">
+      <h2>Alarm Times</h2>
+      <form id="alarm-form">
+        <div class="time-select-group">
+          <select id="alarm-hour-select"></select>
+          <select id="alarm-minute-select"></select>
+        </div>
+        <button type="submit">Add Alarm</button>
+      </form>
+      <ul id="alarm-list"></ul>
+      <button id="clear-alarms">Clear Alarms</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
