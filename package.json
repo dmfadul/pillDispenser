@@ -1,0 +1,27 @@
+{
+  "name": "pilldispenser",
+  "version": "1.0.0",
+  "description": "A dispenser of pills",
+  "keywords": [
+    "pill"
+  ],
+  "homepage": "https://github.com/dmfadul/pillDispenser#readme",
+  "bugs": {
+    "url": "https://github.com/dmfadul/pillDispenser/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dmfadul/pillDispenser.git"
+  },
+  "license": "ISC",
+  "author": "Clara Kiddo",
+  "type": "commonjs",
+  "main": "index.html",
+  "scripts": {
+    "test": "\"test\": \"exho \\\"Error: no test specified\\\" && exit 1\""
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "@capacitor/core": "^7.2.0"
+  }
+}
