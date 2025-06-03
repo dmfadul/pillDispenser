@@ -98,6 +98,84 @@ function saveDispenseTime() {
   localStorage.setItem(DISPENSE_KEY, time);
 }
 
+function requestBluetoothPermissions() {
+  if (device.platform === 'Android') {
+    const sdkInt = parseInt(device.version.split('.')[0]);
+    if (sdkInt >= 12) {
+      cordova.plugins.diagnostic.requestRuntimePermissions(function(statuses) {
+        console.log("Bluetooth permissions:", statuses);
+      }, function(error) {
+        console.error("Permission error:", error);
+      }, [
+        cordova.plugins.diagnostic.permission.BLUETOOTH_CONNECT,
+        cordova.plugins.diagnostic.permission.ACCESS_FINE_LOCATION
+      ]);
+    }
+  }
+}
+
+let hc06Address = null;
+
+// Ensure Cordova is ready
+document.addEventListener('deviceready', onDeviceReady, false);
+
+function onDeviceReady() {
+  console.log('Device is ready');
+
+  // Bind connect and send buttons
+  document.getElementById('connect-btn').addEventListener('click', connectToHC06);
+  document.getElementById('send-config-btn').addEventListener('click', sendConfigToArduino);
+
+  // Optional: request Bluetooth permissions here if Android 12+
+}
+
+// Connect to paired HC-06
+function connectToHC06() {
+  bluetoothSerial.list(
+    function(devices) {
+      const hc06 = devices.find(d => d.name === 'HC-06');
+      if (hc06) {
+        hc06Address = hc06.id;
+        bluetoothSerial.connectInsecure(hc06Address, () => {
+          alert('Connected to HC-06!');
+        }, () => {
+          alert('Connection failed.');
+        });
+      } else {
+        alert('HC-06 not found. Make sure it is paired via Bluetooth settings.');
+      }
+    },
+    (err) => {
+      console.error('Bluetooth list error:', err);
+    }
+  );
+}
+
+// Send config data to Arduino via HC-06
+function sendConfigToArduino() {
+  if (!hc06Address) {
+    alert('Please connect to HC-06 first.');
+    return;
+  }
+
+  const alarms = JSON.parse(localStorage.getItem(ALARM_KEY)) || [];
+  const dispense = localStorage.getItem(DISPENSE_KEY) || null;
+
+  const payload = {
+    alarms: alarms,
+    dispense: dispense
+  };
+
+  const message = JSON.stringify(payload) + '\n';
+
+  bluetoothSerial.write(message, () => {
+    alert('Config sent!');
+  }, (err) => {
+    console.error('Bluetooth write error:', err);
+    alert('Failed to send config.');
+  });
+}
+
 dispenseHourSelect.addEventListener('change', saveDispenseTime);
 dispenseMinuteSelect.addEventListener('change', saveDispenseTime);
 
