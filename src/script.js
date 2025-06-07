@@ -1,3 +1,5 @@
+// Import BleClient from the BLE plugin
+import { BleClient } from '@capacitor-community/bluetooth-le';
 
 // ALARM TIME ELEMENTS
 const alarmForm = document.getElementById('alarm-form');
@@ -14,16 +16,9 @@ const dispenseMinuteSelect = document.getElementById('dispense-minute-select');
 const ALARM_KEY = 'alarmTimes';
 const DISPENSE_KEY = 'dispenseTime';
 
-async function ensureBluetoothPermissions() {
-  try {
-    const granted = await BluetoothSerial.requestPermissions();
-    console.log('[Permissions] Bluetooth permissions granted:', granted);
-  } catch (err) {
-    console.error('[Permissions] Bluetooth permission error:', err);
-    alert('Bluetooth permissions are required to connect to the device.');
-  }
-}
-
+// BLE Service and Characteristic UUIDs (adjust these based on your device)
+const NORDIC_UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'; // Nordic UART Service UUID
+const NORDIC_UART_TX_CHARACTERISTIC = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // TX Characteristic UUID
 
 function pad(num) {
   return num.toString().padStart(2, '0');
@@ -108,26 +103,8 @@ function saveDispenseTime() {
   localStorage.setItem(DISPENSE_KEY, time);
 }
 
-function requestBluetoothPermissions() {
-  if (device.platform === 'Android') {
-    const sdkInt = parseInt(device.version.split('.')[0]);
-    if (sdkInt >= 12) {
-      cordova.plugins.diagnostic.requestRuntimePermissions(function(statuses) {
-        console.log("Bluetooth permissions:", statuses);
-      }, function(error) {
-        console.error("Permission error:", error);
-      }, [
-        cordova.plugins.diagnostic.permission.BLUETOOTH_CONNECT,
-        cordova.plugins.diagnostic.permission.ACCESS_FINE_LOCATION
-      ]);
-    }
-  }
-}
-
-let hc06Address = null;
-
-// Ensure Cordova is ready
-document.addEventListener('deviceready', onDeviceReady, false);
+// Ensure Cordova/Capacitor is ready
+document.addEventListener ('deviceready', onDeviceReady, false);
 
 function onDeviceReady() {
   console.log('Device is ready');
@@ -135,61 +112,43 @@ function onDeviceReady() {
   // Bind connect and send buttons
   document.getElementById('connect-btn').addEventListener('click', connectToHC06);
   document.getElementById('send-config-btn').addEventListener('click', sendConfigToArduino);
-
-  // Optional: request Bluetooth permissions here if Android 12+
 }
 
-// Connect to paired HC-06
+// Connect to BLE device
 async function connectToHC06() {
   try {
-    await window.BluetoothSerial.requestPermissions();
-    await window.BluetoothSerial.connect({ address: '98:DA:60:0D:8B:28' });
-    alert('Connected to HC-06!');
+    // Check if Bluetooth is enabled
+    const isEnabled = await BleClient.isEnabled();
+    if (!isEnabled) {
+      alert('Please enable Bluetooth.');
+      return;
+    }
+
+    // Initialize BLE client
+    await BleClient.initialize();
+
+    // Request a device with the specified service and name prefix
+    const device = await BleClient.requestDevice({
+      services: [NORDIC_UART_SERVICE],
+      namePrefix: 'HC-06' // Adjust if your BLE device's name differs
+    });
+
+    // Connect to the selected device
+    await BleClient.connect(device.deviceId);
+    alert('Connected to device!');
+    
+    // Store the device ID for later use
+    window.connectedDeviceId = device.deviceId;
   } catch (err) {
     console.error('Bluetooth error:', err);
     alert('Failed to connect: ' + err.message);
   }
 }
 
-
-
-// async function connectToHC06() {
-//   try {
-//     await window.BluetoothSerial.requestPermissions();
-//     await window.BluetoothSerial.connect({ address: '98:DA:60:0D:8B:28' });
-//     alert('Connected to HC-06!');
-//   } catch (err) {
-//     console.error('Bluetooth error:', err);
-//     alert('Failed to connect: ' + err.message);
-//   }
-// }
-
-
-// function connectToHC06() {
-//   bluetoothSerial.list(
-//     function(devices) {
-//       const hc06 = devices.find(d => d.name === 'HC-06');
-//       if (hc06) {
-//         hc06Address = hc06.id;
-//         bluetoothSerial.connectInsecure(hc06Address, () => {
-//           alert('Connected to HC-06!');
-//         }, () => {
-//           alert('Connection failed.');
-//         });
-//       } else {
-//         alert('HC-06 not found. Make sure it is paired via Bluetooth settings.');
-//       }
-//     },
-//     (err) => {
-//       console.error('Bluetooth list error:', err);
-//     }
-//   );
-// }
-
-// Send config data to Arduino via HC-06
-function sendConfigToArduino() {
-  if (!hc06Address) {
-    alert('Please connect to HC-06 first.');
+// Send config data to Arduino via BLE
+async function sendConfigToArduino() {
+  if (!window.connectedDeviceId) {
+    alert('Please connect to the device first.');
     return;
   }
 
@@ -204,14 +163,21 @@ function sendConfigToArduino() {
   const message = JSON.stringify(payload) + '\n';
   // message formatting: {"alarms":["05:00"],"dispense":"01:20"}
 
-  bluetoothSerial.write(message, () => {
+  try {
+    await BleClient.write(
+      window.connectedDeviceId,
+      NORDIC_UART_SERVICE,
+      NORDIC_UART_TX_CHARACTERISTIC,
+      message
+    );
     alert('Config sent!');
-  }, (err) => {
+  } catch (err) {
     console.error('Bluetooth write error:', err);
     alert('Failed to send config.');
-  });
+  }
 }
 
+// Event listeners for dispense time
 dispenseHourSelect.addEventListener('change', saveDispenseTime);
 dispenseMinuteSelect.addEventListener('change', saveDispenseTime);
 
