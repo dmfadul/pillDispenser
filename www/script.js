@@ -167,6 +167,7 @@ function sendConfigToArduino() {
   };
 
   const message = JSON.stringify(payload) + '\n';
+  // message formatting: {"alarms":["05:00"],"dispense":"01:20"}
 
   bluetoothSerial.write(message, () => {
     alert('Config sent!');
