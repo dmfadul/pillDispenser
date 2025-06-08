@@ -116,34 +116,67 @@ function onDeviceReady() {
 
 // Connect to BLE device
 async function connectToHC06() {
+  // Check Bluetooth status
+  BleClient.initialize();
+  console.log('Checking if Bluetooth is enabled...');
   try {
-    // Check if Bluetooth is enabled
     const isEnabled = await BleClient.isEnabled();
     if (!isEnabled) {
       alert('Please enable Bluetooth.');
       return;
     }
+    console.log('Bluetooth is enabled.');
 
-    // Initialize BLE client
-    await BleClient.initialize();
+    await BleClient.connect('98:DA:60:0D:8B:28');
+    window.connectedDeviceId = '98:DA:60:0D:8B:28';
 
-    // Request a device with the specified service and name prefix
-    const device = await BleClient.requestDevice({
-      services: [NORDIC_UART_SERVICE],
-      namePrefix: 'HC-06' // Adjust if your BLE device's name differs
-    });
 
-    // Connect to the selected device
-    await BleClient.connect(device.deviceId);
-    alert('Connected to device!');
-    
-    // Store the device ID for later use
-    window.connectedDeviceId = device.deviceId;
+    // // Request device
+    // console.log('Requesting device...');
+    // const device = await BleClient.requestDevice({
+    //   services: [NORDIC_UART_SERVICE],
+    //   namePrefix: 'HC-06'
+    // });
+    // console.log('Device selected:', device.deviceId);
+
+    // // Connect
+    // await BleClient.connect(device.deviceId);
+    // alert('Connected to device!');
+    // window.connectedDeviceId = device.deviceId;
   } catch (err) {
     console.error('Bluetooth error:', err);
-    alert('Failed to connect: ' + err.message);
+    alert('Failed to connect: ' + (err.message || 'Unknown error'));
   }
 }
+// async function connectToHC06() {
+//   try {
+//     // Check if Bluetooth is enabled
+//     const isEnabled = await BleClient.isEnabled();
+//     if (!isEnabled) {
+//       alert('Please enable Bluetooth.');
+//       return;
+//     }
+
+//     // Initialize BLE client
+//     await BleClient.initialize();
+
+//     // Request a device with the specified service and name prefix
+//     const device = await BleClient.requestDevice({
+//       services: [NORDIC_UART_SERVICE],
+//       namePrefix: 'HC-06' // Adjust if your BLE device's name differs
+//     });
+
+//     // Connect to the selected device
+//     await BleClient.connect(device.deviceId);
+//     alert('Connected to device!');
+    
+//     // Store the device ID for later use
+//     window.connectedDeviceId = device.deviceId;
+//   } catch (err) {
+//     console.error('Bluetooth error:', err);
+//     alert('Failed to connect: ' + err.message);
+//   }
+// }
 
 // Send config data to Arduino via BLE
 async function sendConfigToArduino() {
@@ -160,15 +193,16 @@ async function sendConfigToArduino() {
     dispense: dispense
   };
 
-  const message = JSON.stringify(payload) + '\n';
   // message formatting: {"alarms":["05:00"],"dispense":"01:20"}
+  const message = JSON.stringify(payload) + '\n';
+  const messageBytes = new TextEncoder().encode(message);
 
   try {
     await BleClient.write(
       window.connectedDeviceId,
       NORDIC_UART_SERVICE,
       NORDIC_UART_TX_CHARACTERISTIC,
-      message
+      messageBytes
     );
     alert('Config sent!');
   } catch (err) {
