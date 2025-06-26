@@ -17,8 +17,8 @@ const ALARM_KEY = 'alarmTimes';
 const DISPENSE_KEY = 'dispenseTime';
 
 // BLE Service and Characteristic UUIDs (adjust these based on your device)
-const NORDIC_UART_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'; // Nordic UART Service UUID
-const NORDIC_UART_TX_CHARACTERISTIC = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // TX Characteristic UUID
+const HM10_SERVICE = '0000ffe0-0000-1000-8000-00805f9b34fb';
+const HM10_TX_CHARACTERISTIC = '0000ffe1-0000-1000-8000-00805f9b34fb';
 
 function pad(num) {
   return num.toString().padStart(2, '0');
