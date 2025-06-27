@@ -1,6 +1,3 @@
-// Import BleClient from the BLE plugin
-import { BleClient } from '@capacitor-community/bluetooth-le';
-
 // ALARM TIME ELEMENTS
 const alarmForm = document.getElementById('alarm-form');
 const alarmHourSelect = document.getElementById('alarm-hour-select');
@@ -15,10 +12,6 @@ const dispenseMinuteSelect = document.getElementById('dispense-minute-select');
 // STORAGE KEYS
 const ALARM_KEY = 'alarmTimes';
 const DISPENSE_KEY = 'dispenseTime';
-
-// BLE Service and Characteristic UUIDs (adjust these based on your device)
-const HM10_SERVICE = '0000ffe0-0000-1000-8000-00805f9b34fb';
-const HM10_TX_CHARACTERISTIC = '0000ffe1-0000-1000-8000-00805f9b34fb';
 
 function pad(num) {
   return num.toString().padStart(2, '0');
@@ -103,85 +96,40 @@ function saveDispenseTime() {
   localStorage.setItem(DISPENSE_KEY, time);
 }
 
-// Ensure Cordova/Capacitor is ready
-document.addEventListener ('deviceready', onDeviceReady, false);
+// Bluetooth Serial Setup
+let isConnected = false;
+const HC06_MAC_ADDRESS = '98:D3:31:F6:5D:46'; // Change this to match your device
+
+document.addEventListener('deviceready', onDeviceReady, false);
 
 function onDeviceReady() {
   console.log('Device is ready');
 
-  // Bind connect and send buttons
   document.getElementById('connect-btn').addEventListener('click', connectToHC06);
   document.getElementById('send-config-btn').addEventListener('click', sendConfigToArduino);
+
+  // Optional: listen for responses from Arduino
+  bluetoothSerial.subscribe('\n', (data) => {
+    console.log("Received from Arduino:", data);
+  });
 }
 
-// Connect to BLE device
-async function connectToHC06() {
-  // Check Bluetooth status
-  BleClient.initialize();
-  console.log('Checking if Bluetooth is enabled...');
-  try {
-    const isEnabled = await BleClient.isEnabled();
-    if (!isEnabled) {
-      alert('Please enable Bluetooth.');
-      return;
+function connectToHC06() {
+  bluetoothSerial.connect(
+    HC06_MAC_ADDRESS,
+    () => {
+      isConnected = true;
+      alert('Connected to HC-06!');
+    },
+    () => {
+      alert('Failed to connect. Make sure it’s paired in Android settings.');
     }
-    console.log('Bluetooth is enabled.');
-
-    await BleClient.connect('98:DA:60:0D:8B:28');
-    window.connectedDeviceId = '98:DA:60:0D:8B:28';
-
-
-    // // Request device
-    // console.log('Requesting device...');
-    // const device = await BleClient.requestDevice({
-    //   services: [NORDIC_UART_SERVICE],
-    //   namePrefix: 'HC-06'
-    // });
-    // console.log('Device selected:', device.deviceId);
-
-    // // Connect
-    // await BleClient.connect(device.deviceId);
-    // alert('Connected to device!');
-    // window.connectedDeviceId = device.deviceId;
-  } catch (err) {
-    console.error('Bluetooth error:', err);
-    alert('Failed to connect: ' + (err.message || 'Unknown error'));
-  }
+  );
 }
-// async function connectToHC06() {
-//   try {
-//     // Check if Bluetooth is enabled
-//     const isEnabled = await BleClient.isEnabled();
-//     if (!isEnabled) {
-//       alert('Please enable Bluetooth.');
-//       return;
-//     }
 
-//     // Initialize BLE client
-//     await BleClient.initialize();
-
-//     // Request a device with the specified service and name prefix
-//     const device = await BleClient.requestDevice({
-//       services: [NORDIC_UART_SERVICE],
-//       namePrefix: 'HC-06' // Adjust if your BLE device's name differs
-//     });
-
-//     // Connect to the selected device
-//     await BleClient.connect(device.deviceId);
-//     alert('Connected to device!');
-    
-//     // Store the device ID for later use
-//     window.connectedDeviceId = device.deviceId;
-//   } catch (err) {
-//     console.error('Bluetooth error:', err);
-//     alert('Failed to connect: ' + err.message);
-//   }
-// }
-
-// Send config data to Arduino via BLE
-async function sendConfigToArduino() {
-  if (!window.connectedDeviceId) {
-    alert('Please connect to the device first.');
+function sendConfigToArduino() {
+  if (!isConnected) {
+    alert('Not connected to device!');
     return;
   }
 
@@ -193,22 +141,14 @@ async function sendConfigToArduino() {
     dispense: dispense
   };
 
-  // message formatting: {"alarms":["05:00"],"dispense":"01:20"}
   const message = JSON.stringify(payload) + '\n';
-  const messageBytes = new TextEncoder().encode(message);
 
-  try {
-    await BleClient.write(
-      window.connectedDeviceId,
-      NORDIC_UART_SERVICE,
-      NORDIC_UART_TX_CHARACTERISTIC,
-      messageBytes
-    );
-    alert('Config sent!');
-  } catch (err) {
-    console.error('Bluetooth write error:', err);
+  bluetoothSerial.write(message, () => {
+    alert('Config sent to Arduino!');
+  }, (err) => {
+    console.error('Write failed:', err);
     alert('Failed to send config.');
-  }
+  });
 }
 
 // Event listeners for dispense time
