@@ -102,8 +102,35 @@ const HC06_MAC_ADDRESS = '98:D3:31:F6:5D:46'; // Change this to match your devic
 
 document.addEventListener('deviceready', onDeviceReady, false);
 
+function requestBluetoothPermissions() {
+  const permissions = cordova.plugins.permissions;
+
+  permissions.requestPermissions(
+    [
+      permissions.BLUETOOTH,
+      permissions.BLUETOOTH_ADMIN,
+      permissions.BLUETOOTH_CONNECT,
+      permissions.BLUETOOTH_SCAN,
+      permissions.ACCESS_FINE_LOCATION
+    ],
+    (status) => {
+      if (!status.hasPermission) {
+        alert('Bluetooth permissions are required.');
+      } else {
+        console.log('All Bluetooth permissions granted.');
+      }
+    },
+    (error) => {
+      console.error('Permission error:', error);
+      alert('Failed to request Bluetooth permissions.');
+    }
+  );
+}
+
 function onDeviceReady() {
   console.log('Device is ready');
+
+  requestBluetoothPermissions();
 
   document.getElementById('connect-btn').addEventListener('click', connectToHC06);
   document.getElementById('send-config-btn').addEventListener('click', sendConfigToArduino);
