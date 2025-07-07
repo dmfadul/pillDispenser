@@ -98,37 +98,59 @@ function saveDispenseTime() {
 
 // Bluetooth Serial Setup
 let isConnected = false;
-const HC06_MAC_ADDRESS = '98:D3:31:F6:5D:46'; // Change this to match your device
+const HC06_MAC_ADDRESS = '98:DA:60:0D:8B:28'; // Change this to match your device
 
 document.addEventListener('deviceready', onDeviceReady, false);
 
 function requestBluetoothPermissions() {
-  const permissions = cordova.plugins.permissions;
+  const permissions = window.cordova?.plugins?.permissions;
+  if (!permissions) {
+    alert('Permissions plugin not available.');
+    return;
+  }
 
-  permissions.requestPermissions(
-    [
-      permissions.BLUETOOTH,
-      permissions.BLUETOOTH_ADMIN,
-      permissions.BLUETOOTH_CONNECT,
-      permissions.BLUETOOTH_SCAN,
-      permissions.ACCESS_FINE_LOCATION
-    ],
-    (status) => {
-      if (!status.hasPermission) {
-        alert('Bluetooth permissions are required.');
-      } else {
-        console.log('All Bluetooth permissions granted.');
-      }
-    },
-    (error) => {
-      console.error('Permission error:', error);
-      alert('Failed to request Bluetooth permissions.');
+  const required = [
+    permissions.BLUETOOTH,
+    permissions.BLUETOOTH_ADMIN,
+    permissions.BLUETOOTH_CONNECT,
+    permissions.BLUETOOTH_SCAN,
+    permissions.ACCESS_FINE_LOCATION
+  ];
+
+  permissions.hasPermission(required, (status) => {
+    if (!status.hasPermission) {
+      permissions.requestPermissions(required, (result) => {
+        if (!result.hasPermission) {
+          alert('Bluetooth permissions denied. The app may not work properly.');
+        } else {
+          console.log('All Bluetooth permissions granted.');
+        }
+      }, (err) => {
+        console.error('Request error:', err);
+        alert('Error requesting Bluetooth permissions.');
+      });
+    } else {
+      console.log('Permissions already granted.');
     }
-  );
+  }, (err) => {
+    console.error('Check error:', err);
+    alert('Error checking Bluetooth permissions.');
+  });
 }
+
 
 function onDeviceReady() {
   console.log('Device is ready');
+  bluetoothSerial.list((devices) => {
+    devices.forEach((device, index) => {
+      console.log(`Device ${index + 1}:`);
+      console.log(`  Name: ${device.name}`);
+      console.log(`  MAC: ${device.id}`);
+    });
+  }, (err) => {
+    console.error("List error:", err);
+  });
+  
 
   requestBluetoothPermissions();
 
@@ -149,7 +171,7 @@ function connectToHC06() {
       alert('Connected to HC-06!');
     },
     () => {
-      alert('Failed to connect. Make sure it’s paired in Android settings.');
+      alert('FAILURE to connectify. Make sure it’s really paired in Android settings.');
     }
   );
 }
@@ -168,14 +190,15 @@ function sendConfigToArduino() {
     dispense: dispense
   };
 
-  const message = JSON.stringify(payload) + '\n';
+  const message = JSON.stringify(payload).trim() + '\n';
 
   bluetoothSerial.write(message, () => {
-    alert('Config sent to Arduino!');
+    console.log("Sent to Arduino:", message);
+    alert('Horarios enviado para o device!');
   }, (err) => {
-    console.error('Write failed:', err);
-    alert('Failed to send config.');
+    console.error("Bluetooth write error:", err);
   });
+  
 }
 
 // Event listeners for dispense time
